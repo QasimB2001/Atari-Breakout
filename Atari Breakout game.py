@@ -62,11 +62,11 @@ class Ball:
         self.diameter = diameter
         self.width = diameter
         self.height = diameter
-        self.xVelocity = random.randint(3, 10)
-        self.yVelocity = random.randint(3, 5)
+        self.xVelocity = random.randint(15, 15)
+        self.yVelocity = random.randint(15, 15)
         self.flag = False
 
-    def ballMovement(self, paddle):
+    def ballMovement(self, paddle, bricks):
         self.x += self.xVelocity
         self.y += self.yVelocity
         if self.x >= 1920-self.diameter or self.x <= 0:
@@ -77,29 +77,69 @@ class Ball:
         #     if self.x+self.diameter >= paddle.getXPos() and self.x+self.diameter <= paddle.getXPos():
         #         self.yVelocity *= -1
         #         self.xVelocity *= -1
-        if detectCollision(self, paddle):
-            if (self.y <= paddle.y) and (self.y + self.height >= paddle.y + paddle.height):
-                self.xVelocity *= -1
-                self.x += self.xVelocity * 5
-                print("x")
-            else:
-                self.yVelocity *= -1
-                self.y += self.yVelocity * 5
-                print("y")
+        if self.detectPaddleCollision(self, paddle):
+            self.yVelocity = abs(self.yVelocity)*-1
 
+        destroyBrick = None
+
+        for brickIndex in range(len(bricks)):
+            if bricks[brickIndex].detectBrickCollision(self, bricks[brickIndex]):
+                if self.y >= bricks[brickIndex].y and self.y+self.diameter <= bricks[brickIndex].y + bricks[brickIndex].height:
+                    self.xVelocity *= -1
+                else:
+                    self.yVelocity *= -1
+                destroyBrick = brickIndex
+                
+        if destroyBrick != None:
+            bricks.pop(destroyBrick)
+
+    def detectPaddleCollision(self, object1, object2):
+        
+        if (object1.y+object1.height >= object2.y and object1.y <= object2.y):
+        #(self.y + self.height >= object2.y and self.y <= object2.y):
+            if (object1.x+object1.width >= object2.x and object1.x <= object2.x+object2.width):
+                return True
+        return False
 
     def drawBall(self):
         pygame.draw.rect(self.screen, self.colour, (self.x, self.y, self.diameter, self.diameter), 0, 100)
 
-def detectCollision(object1, object2):
-    if (object1.y+object1.height >= object2.y and object1.y+object1.height <= object2.y+object2.height) or (object1.y >= object2.y and object1.y <= object2.y+object2.height) :
-        if (object1.x+object1.width >= object2.x and object1.x+object1.width <= object2.x+object2.width) or (object1.x >= object2.x and object1.x <= object2.x+object2.width):
-            return True
-    return False
+class Brick:
+    def __init__(self, screen, colour, x, y, width, height):
+        self.screen = screen
+        self.colour = colour
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+
+    def drawBrick(self):
+        pygame.draw.rect(self.screen, self.colour, (self.x, self.y, self.width, self.height))
+
+    def detectBrickCollision(self, object1, object2):
+        if (object1.y+object1.height >= object2.y and object1.y+object1.height <= object2.y+object2.height) or (object1.y >= object2.y and object1.y <= object2.y+object2.height) :
+            if (object1.x+object1.width >= object2.x and object1.x+object1.width <= object2.x+object2.width) or (object1.x >= object2.x and object1.x <= object2.x+object2.width):
+                return True
+        return False
+
+def createBricks(bricks, numOfBrickRows, numOfBrickColums):
+    brickWidth = screenWidth/numOfBrickColums
+    brickHeight = 600/numOfBrickRows
+    for yPos in range(numOfBrickRows):
+        for xPos in range(numOfBrickColums):
+            bricks.append(Brick(screen, (random.randint(0,255), random.randint(0,255), random.randint(0,255)), xPos*brickWidth, yPos*brickHeight+brickHeight, brickWidth, brickHeight))
+    return bricks
+    
 
 def gameLoop():
-    paddle = Paddle(screen, darkRed, (screenWidth/2)-100, 900, 200, 100)
+    paddle = Paddle(screen, darkRed, (screenWidth/2)-100, 950, 200, 20)
     ball = Ball(screen, darkGreen, (screenWidth/2)-15, 700, 30)
+
+    bricks = []
+    numOfBrickRows = 8
+    numOfBrickColums = 8
+    bricks = createBricks(bricks, numOfBrickRows, numOfBrickColums)
+    
     while True:
         clock.tick(60)
         for event in pygame.event.get():
@@ -109,11 +149,15 @@ def gameLoop():
             elif event.type == pygame.MOUSEMOTION:
                 paddle.setXPos()
 
-        ball.ballMovement(paddle)
+        ball.ballMovement(paddle, bricks)
 
         screen.fill((darkGrey))
         paddle.drawPaddle()
         ball.drawBall()
+
+        for brick in bricks:
+            brick.drawBrick()
+
         pygame.display.update()
 
 gameLoop()
